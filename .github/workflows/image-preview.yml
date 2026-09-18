@@ -1,0 +1,50 @@
+name: Image optimization preview
+
+on:
+  push:
+    branches: [feat/lossless-webp-blog-cards]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-preview-pages
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    # This test deployment belongs to the personal fork.
+    if: github.repository == 'jsomeara/genomicsxai.github.io'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}previews/manual/images/
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/configure-pages@v5
+        id: pages
+      - uses: ./.github/actions/optimize-images
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          extended: true
+      - name: Build test site
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          hugo --minify --environment preview \
+            --baseURL "${BASE_URL}/previews/manual/images/" \
+            --destination _preview/previews/manual/images
+          printf '%s\n' '<!doctype html><html><head><meta http-equiv="refresh" content="0;url=previews/manual/images/"></head><body><a href="previews/manual/images/">Open image preview</a></body></html>' > _preview/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _preview
+      - uses: actions/deploy-pages@v4
+        id: deploy

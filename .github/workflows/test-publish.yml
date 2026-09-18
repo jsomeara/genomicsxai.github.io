@@ -45,6 +45,10 @@ jobs:
           submodules: true
           fetch-depth: 0
 
+      - name: Generate lossless images and card thumbnails
+        if: github.event.inputs.deploy_preview == 'true'
+        uses: ./.github/actions/optimize-images
+
       - uses: peaceiris/actions-hugo@v3
         with:
           extended: true
@@ -62,7 +66,13 @@ jobs:
             SAFE="run-${{ github.run_id }}"
           fi
           DEST="previews/manual/${SAFE}"
-          URL="https://genomicsxai.github.io/${DEST}/"
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          BASE="https://${OWNER}.github.io"
+          if [ "${REPO,,}" != "${OWNER}.github.io" ]; then
+            BASE="${BASE}/${REPO}"
+          fi
+          URL="${BASE}/${DEST}/"
           echo "destination_dir=${DEST}" >> "$GITHUB_OUTPUT"
           echo "preview_url=${URL}" >> "$GITHUB_OUTPUT"
           echo "Using preview path ${DEST}"
@@ -80,6 +90,7 @@ jobs:
           fi
 
       - name: Ensure blog discussions
+        if: github.repository == 'genomicsxai/genomicsxai.github.io'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
